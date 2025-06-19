@@ -140,32 +140,49 @@ async function fetchTechData(category, company, metric) {
     }
 }
 
-// Function to populate company dropdown based on selected category using backend
-async function updateCompanyDropdown(category) {
-    const companySelect = document.getElementById('techCompany');
-    companySelect.innerHTML = '<option value="">Select Company</option>';
-    companySelect.disabled = true;
-    
+// Function to populate both company dropdowns based on selected category
+async function updateCompanyDropdowns(category) {
+    const companySelect1 = document.getElementById('techCompany');
+    const companySelect2 = document.getElementById('techCompany2');
+    companySelect1.innerHTML = '<option value="">Select Company</option>';
+    companySelect2.innerHTML = '<option value="">Select Company to Compare</option>';
+    companySelect1.disabled = true;
+    companySelect2.disabled = true;
     if (category) {
         try {
             const response = await fetch(`/api/tech/companies/${category}`);
             if (!response.ok) throw new Error('Failed to fetch companies');
             const companies = await response.json();
-            // companies is an object: { SYMBOL: 'Company Name', ... }
             Object.entries(companies).forEach(([symbol, name]) => {
-                // Only add if symbol is mapped in window.config.COMPANY_SYMBOLS (for frontend-backend consistency)
-                if (Object.values(window.config.COMPANY_SYMBOLS).includes(symbol)) {
-                    const option = document.createElement('option');
-                    option.value = symbol;
-                    option.textContent = name;
-                    companySelect.appendChild(option);
-                }
+                const option1 = document.createElement('option');
+                option1.value = symbol;
+                option1.textContent = name;
+                companySelect1.appendChild(option1);
+                const option2 = document.createElement('option');
+                option2.value = symbol;
+                option2.textContent = name;
+                companySelect2.appendChild(option2);
             });
-            companySelect.disabled = false;
+            companySelect1.disabled = false;
+            companySelect2.disabled = false;
         } catch (err) {
             console.error('Error fetching companies:', err);
         }
     }
+}
+
+// Disable selected company in the other dropdown
+function syncCompanyDropdowns() {
+    const companySelect1 = document.getElementById('techCompany');
+    const companySelect2 = document.getElementById('techCompany2');
+    const selected1 = companySelect1.value;
+    const selected2 = companySelect2.value;
+    Array.from(companySelect2.options).forEach(opt => {
+        opt.disabled = (opt.value === selected1 && opt.value !== '');
+    });
+    Array.from(companySelect1.options).forEach(opt => {
+        opt.disabled = (opt.value === selected2 && opt.value !== '');
+    });
 }
 
 // Function to populate crop dropdown from backend
@@ -239,57 +256,73 @@ function processMonthlyWeatherData(data) {
 
 // Function to update tech visualization with real data
 async function updateTechVisualization() {
-    console.log('Attempting to update tech visualization...'); // Log at the start
-    const company = document.getElementById('techCompany').value;
-    const metric = document.getElementById('financialMetric').value;
-    const category = document.getElementById('techCategory').value;
-    
-    if (!company || !metric || !category) {
-        console.log('Missing category, company, or metric.'); // Log if conditions not met
-        return;
-    }
-    
-    try {
-        console.log(`Fetching tech data for category: ${category}, company: ${company}, metric: ${metric}`); // Log fetch details
-        // Fetch from backend
-        const techData = await fetchTechData(category, company, metric);
-
-        console.log('Fetched tech data response:', techData); // Log the fetched data/error object
-
-        // Check for null explicitly, as fetchTechData can now return null on network errors before parsing
-        if (techData === null || (techData && techData.error)) {
-             console.error('Backend returned error or null data:', techData);
-             document.getElementById('techVisualization').innerHTML =
-                 `<div class="alert alert-danger">Error fetching data. See console for details.${techData && techData.error ? ' ' + techData.error : ''}</div>`;
-             return;
-        }
-
-        if (techData && Array.isArray(techData) && techData.length > 0) {
-            createVisualization(
-                techData,
-                'techVisualization',
-                `${company} ${metric.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}`,
-                metric,
-                metric === 'stock_price' ? 'Price (USD)' :
-                metric === 'market_cap' ? 'Market Cap (USD)' :
-                metric === 'trading_volume' ? 'Volume' :
-                metric === 'volatility' ? 'Volatility' : 'Value'
-            );
-        } else {
+    const mode = document.getElementById('correlationMode').value;
+    if (mode === 'companies') {
+        const company1 = document.getElementById('techCompany').value;
+        const company2 = document.getElementById('techCompany2').value;
+        const metric = document.getElementById('financialMetric').value;
+        const category = document.getElementById('techCategory').value;
+        if (!company1 || !company2 || !metric || !category) return;
+        try {
+            const [data1, data2] = await Promise.all([
+                fetchTechData(category, company1, metric),
+                fetchTechData(category, company2, metric)
+            ]);
+            window.techData1 = data1;
+            window.techData2 = data2;
+            if (data1 && Array.isArray(data1) && data1.length > 0) {
+                createVisualization(
+                    data1,
+                    'techVisualization',
+                    `${company1} ${metric.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}`,
+                    metric,
+                    metric === 'stock_price' ? 'Price (USD)' :
+                    metric === 'market_cap' ? 'Market Cap (USD)' :
+                    metric === 'trading_volume' ? 'Volume' :
+                    metric === 'volatility' ? 'Volatility' : 'Value'
+                );
+            } else {
+                document.getElementById('techVisualization').innerHTML = 
+                    '<div class="alert alert-warning">No data available for visualization</div>';
+            }
+        } catch (error) {
+            console.error('Error updating tech visualization:', error);
             document.getElementById('techVisualization').innerHTML = 
-                '<div class="alert alert-warning">No data available for visualization</div>';
+                '<div class="alert alert-warning">Error fetching data</div>';
         }
-    } catch (error) {
-        console.error('Error updating tech visualization:', error);
-        // Fallback to sample data
-        const sampleData = generateTechData(category, company, metric);
-        createVisualization(
-            sampleData,
-            'techVisualization',
-            `${company} Data (Sample)`,
-            metric,
-            'Value'
-        );
+    } else {
+        // Metrics mode
+        const company = document.getElementById('techCompanyMetrics').value;
+        const metric1 = document.getElementById('financialMetric1').value;
+        const metric2 = document.getElementById('financialMetric2').value;
+        const category = document.getElementById('techCategory').value;
+        if (!company || !metric1 || !metric2 || !category || metric1 === metric2) return;
+        try {
+            const data = await fetchTechData(category, company, metric1);
+            window.techData1 = data;
+            window.techMetric1 = metric1;
+            window.techMetric2 = metric2;
+            // Show time series for metric1 by default
+            if (data && Array.isArray(data) && data.length > 0) {
+                createVisualization(
+                    data,
+                    'techVisualization',
+                    `${company} ${metric1.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}`,
+                    metric1,
+                    metric1 === 'stock_price' ? 'Price (USD)' :
+                    metric1 === 'market_cap' ? 'Market Cap (USD)' :
+                    metric1 === 'trading_volume' ? 'Volume' :
+                    metric1 === 'volatility' ? 'Volatility' : 'Value'
+                );
+            } else {
+                document.getElementById('techVisualization').innerHTML = 
+                    '<div class="alert alert-warning">No data available for visualization</div>';
+            }
+        } catch (error) {
+            console.error('Error updating tech visualization:', error);
+            document.getElementById('techVisualization').innerHTML = 
+                '<div class="alert alert-warning">Error fetching data</div>';
+        }
     }
 }
 
@@ -336,12 +369,21 @@ async function updateAgricultureVisualization() {
 
 // Function to validate tech selections
 function validateTechSelections() {
-    const category = document.getElementById('techCategory').value;
-    const company = document.getElementById('techCompany').value;
-    const metric = document.getElementById('financialMetric').value;
+    const mode = document.getElementById('correlationMode').value;
     const analyzeBtn = document.getElementById('analyzeTech');
-
-    analyzeBtn.disabled = !(category && company && metric);
+    if (mode === 'companies') {
+        const category = document.getElementById('techCategory').value;
+        const company1 = document.getElementById('techCompany').value;
+        const company2 = document.getElementById('techCompany2').value;
+        const metric = document.getElementById('financialMetric').value;
+        analyzeBtn.disabled = !(category && company1 && company2 && metric);
+    } else {
+        const category = document.getElementById('techCategory').value;
+        const company = document.getElementById('techCompanyMetrics').value;
+        const metric1 = document.getElementById('financialMetric1').value;
+        const metric2 = document.getElementById('financialMetric2').value;
+        analyzeBtn.disabled = !(category && company && metric1 && metric2 && metric1 !== metric2);
+    }
 }
 
 // Function to validate agriculture selections
@@ -524,18 +566,31 @@ document.addEventListener('DOMContentLoaded', function() {
     // Tech & Finance event listeners
     const techCategory = document.getElementById('techCategory');
     const techCompany = document.getElementById('techCompany');
+    const techCompany2 = document.getElementById('techCompany2');
     const financialMetric = document.getElementById('financialMetric');
     const analyzeTechBtn = document.getElementById('analyzeTech');
     
     if (techCategory) {
         techCategory.addEventListener('change', async function() {
-            await updateCompanyDropdown(this.value);
+            await updateCompanyDropdowns(this.value);
+            await updateMetricsCompanyDropdown(this.value);
+            syncCompanyDropdowns();
             validateTechSelections();
         });
     }
     
     if (techCompany) {
-        techCompany.addEventListener('change', validateTechSelections);
+        techCompany.addEventListener('change', function() {
+            syncCompanyDropdowns();
+            validateTechSelections();
+        });
+    }
+    
+    if (techCompany2) {
+        techCompany2.addEventListener('change', function() {
+            syncCompanyDropdowns();
+            validateTechSelections();
+        });
     }
     
     if (financialMetric) {
@@ -572,6 +627,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (analyzeAgricultureBtn) {
         analyzeAgricultureBtn.addEventListener('click', updateAgricultureVisualization);
     }
+
+    setupTechVizTabs();
+    setupCorrelationModeUI();
 });
 
 // Test function to check API connectivity
@@ -624,3 +682,335 @@ async function testAPIs() {
 
 // Add test function to window object so it can be called from console
 window.testAPIs = testAPIs;
+
+// Helper: fetch correlation data from backend
+async function fetchCorrelationData(dataset1, dataset2) {
+    try {
+        const response = await fetch('/api/data/correlation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dataset1, dataset2 })
+        });
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching correlation data:', error);
+        return null;
+    }
+}
+
+// Render correlation scatter plot and value
+async function renderTechCorrelation() {
+    const mode = document.getElementById('correlationMode').value;
+    if (mode === 'companies') {
+        const data1 = window.techData1 || [];
+        const data2 = window.techData2 || [];
+        const metric = document.getElementById('financialMetric').value;
+        if (!data1.length || !data2.length) {
+            document.getElementById('techCorrelationPlot').innerHTML = '<div class="alert alert-warning">No data available for correlation plot</div>';
+            document.getElementById('techCorrelationValue').innerText = '';
+            return;
+        }
+        // Merge on date
+        const data2ByDate = Object.fromEntries(data2.map(d => [d.date, d]));
+        const points = data1.map(d => {
+            const d2 = data2ByDate[d.date];
+            return d2 ? { x: d[metric], y: d2[metric], date: d.date } : null;
+        }).filter(Boolean);
+        if (!points.length) {
+            document.getElementById('techCorrelationPlot').innerHTML = '<div class="alert alert-warning">No overlapping dates for correlation</div>';
+            document.getElementById('techCorrelationValue').innerText = '';
+            return;
+        }
+        Plotly.newPlot('techCorrelationPlot', [{
+            x: points.map(p => p.x),
+            y: points.map(p => p.y),
+            text: points.map(p => p.date),
+            mode: 'markers',
+            type: 'scatter',
+            marker: { color: '#1DB954', size: 10 },
+            name: 'Correlation'
+        }], {
+            title: `${document.getElementById('techCompany').selectedOptions[0].text} vs ${document.getElementById('techCompany2').selectedOptions[0].text} (${metric.replace('_', ' ')})`,
+            xaxis: { title: document.getElementById('techCompany').selectedOptions[0].text },
+            yaxis: { title: document.getElementById('techCompany2').selectedOptions[0].text },
+            plot_bgcolor: '#fff',
+            paper_bgcolor: '#fff',
+        });
+        // Calculate Pearson correlation
+        const n = points.length;
+        const meanX = points.reduce((a, b) => a + b.x, 0) / n;
+        const meanY = points.reduce((a, b) => a + b.y, 0) / n;
+        const numerator = points.reduce((sum, p) => sum + (p.x - meanX) * (p.y - meanY), 0);
+        const denomX = Math.sqrt(points.reduce((sum, p) => sum + Math.pow(p.x - meanX, 2), 0));
+        const denomY = Math.sqrt(points.reduce((sum, p) => sum + Math.pow(p.y - meanY, 2), 0));
+        const r = denomX && denomY ? numerator / (denomX * denomY) : 0;
+        document.getElementById('techCorrelationValue').innerText = `Pearson correlation: ${r.toFixed(3)}`;
+    } else {
+        // Metrics mode
+        const data = window.techData1 || [];
+        const metric1 = window.techMetric1;
+        const metric2 = window.techMetric2;
+        if (!data.length || !metric1 || !metric2) {
+            document.getElementById('techCorrelationPlot').innerHTML = '<div class="alert alert-warning">No data available for correlation plot</div>';
+            document.getElementById('techCorrelationValue').innerText = '';
+            return;
+        }
+        const points = data.map(d => {
+            if (d[metric1] !== undefined && d[metric2] !== undefined) {
+                return { x: d[metric1], y: d[metric2], date: d.date };
+            }
+            return null;
+        }).filter(Boolean);
+        if (!points.length) {
+            document.getElementById('techCorrelationPlot').innerHTML = '<div class="alert alert-warning">No overlapping data for correlation</div>';
+            document.getElementById('techCorrelationValue').innerText = '';
+            return;
+        }
+        Plotly.newPlot('techCorrelationPlot', [{
+            x: points.map(p => p.x),
+            y: points.map(p => p.y),
+            text: points.map(p => p.date),
+            mode: 'markers',
+            type: 'scatter',
+            marker: { color: '#1DB954', size: 10 },
+            name: 'Correlation'
+        }], {
+            title: `${document.getElementById('techCompanyMetrics').selectedOptions[0].text}: ${metric1.replace('_', ' ')} vs ${metric2.replace('_', ' ')}`,
+            xaxis: { title: metric1.replace('_', ' ') },
+            yaxis: { title: metric2.replace('_', ' ') },
+            plot_bgcolor: '#fff',
+            paper_bgcolor: '#fff',
+        });
+        // Calculate Pearson correlation
+        const n = points.length;
+        const meanX = points.reduce((a, b) => a + b.x, 0) / n;
+        const meanY = points.reduce((a, b) => a + b.y, 0) / n;
+        const numerator = points.reduce((sum, p) => sum + (p.x - meanX) * (p.y - meanY), 0);
+        const denomX = Math.sqrt(points.reduce((sum, p) => sum + Math.pow(p.x - meanX, 2), 0));
+        const denomY = Math.sqrt(points.reduce((sum, p) => sum + Math.pow(p.y - meanY, 2), 0));
+        const r = denomX && denomY ? numerator / (denomX * denomY) : 0;
+        document.getElementById('techCorrelationValue').innerText = `Pearson correlation: ${r.toFixed(3)}`;
+    }
+}
+
+// Tab switching logic for mini slider
+function setupTechVizTabs() {
+    const timeseriesTab = document.getElementById('timeseries-tab');
+    const correlationTab = document.getElementById('correlation-tab');
+    if (correlationTab) {
+        correlationTab.addEventListener('shown.bs.tab', function () {
+            renderTechCorrelation();
+        });
+    }
+}
+
+// Show/hide form groups based on correlation mode (dropdown version)
+function setupCorrelationModeUI() {
+    const modeDropdown = document.getElementById('correlationMode');
+    const companiesGroup = document.getElementById('correlateCompaniesGroup');
+    const metricsGroup = document.getElementById('correlateMetricsGroup');
+    modeDropdown.addEventListener('change', function() {
+        if (this.value === 'companies') {
+            companiesGroup.style.display = '';
+            metricsGroup.style.display = 'none';
+        } else {
+            companiesGroup.style.display = 'none';
+            metricsGroup.style.display = '';
+        }
+        validateTechSelections();
+    });
+}
+
+// Populate metrics mode company dropdown
+async function updateMetricsCompanyDropdown(category) {
+    const companySelect = document.getElementById('techCompanyMetrics');
+    companySelect.innerHTML = '<option value="">Select Company</option>';
+    companySelect.disabled = true;
+    if (category) {
+        try {
+            const response = await fetch(`/api/tech/companies/${category}`);
+            if (!response.ok) throw new Error('Failed to fetch companies');
+            const companies = await response.json();
+            Object.entries(companies).forEach(([symbol, name]) => {
+                const option = document.createElement('option');
+                option.value = symbol;
+                option.textContent = name;
+                companySelect.appendChild(option);
+            });
+            companySelect.disabled = false;
+        } catch (err) {
+            console.error('Error fetching companies:', err);
+        }
+    }
+}
+
+// --- Agriculture Correlation Mode Logic ---
+const agriCorrelationMode = document.getElementById('agriCorrelationMode');
+const correlateRegionsGroup = document.getElementById('correlateRegionsGroup');
+const correlateWeatherMetricsGroup = document.getElementById('correlateWeatherMetricsGroup');
+
+agriCorrelationMode.addEventListener('change', function() {
+    if (this.value === 'regions') {
+        correlateRegionsGroup.style.display = '';
+        correlateWeatherMetricsGroup.style.display = 'none';
+    } else {
+        correlateRegionsGroup.style.display = 'none';
+        correlateWeatherMetricsGroup.style.display = '';
+    }
+});
+
+// --- Populate region dropdowns dynamically based on crop selection ---
+const crop = document.getElementById('crop');
+const region = document.getElementById('region');
+const region2 = document.getElementById('region2');
+const cropMetrics = document.getElementById('cropMetrics');
+const regionMetrics = document.getElementById('regionMetrics');
+
+function populateRegions(cropValue, regionSelect) {
+    // Fetch regions for the selected crop from backend
+    fetch(`/api/regions?crop=${encodeURIComponent(cropValue)}`)
+        .then(res => res.json())
+        .then(data => {
+            regionSelect.innerHTML = '<option value="">Select Region</option>';
+            data.regions.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r;
+                opt.textContent = r;
+                regionSelect.appendChild(opt);
+            });
+        });
+}
+
+crop.addEventListener('change', () => {
+    populateRegions(crop.value, region);
+    populateRegions(crop.value, region2);
+});
+cropMetrics.addEventListener('change', () => {
+    populateRegions(cropMetrics.value, regionMetrics);
+});
+
+// --- Agriculture Visualization Tabs ---
+const agriVizTabs = document.getElementById('agriVizTabs');
+const agriTimeseriesPane = document.getElementById('agri-timeseries-pane');
+const agriCorrelationPane = document.getElementById('agri-correlation-pane');
+
+// --- Analyze Button Logic ---
+const analyzeAgriculture = document.getElementById('analyzeAgriculture');
+const agricultureVisualization = document.getElementById('agricultureVisualization');
+const agriCorrelationPlot = document.getElementById('agriCorrelationPlot');
+const agriCorrelationValue = document.getElementById('agriCorrelationValue');
+
+analyzeAgriculture.addEventListener('click', () => {
+    const mode = agriCorrelationMode.value;
+    if (mode === 'regions') {
+        // Correlate same weather metric for two regions
+        const cropVal = crop.value;
+        const region1 = region.value;
+        const region2Val = region2.value;
+        const metric = document.getElementById('weatherMetric').value;
+        if (!cropVal || !region1 || !region2Val || !metric) {
+            alert('Please select crop, both regions, and weather metric.');
+            return;
+        }
+        // Fetch time series for both regions
+        fetch(`/api/agriculture/timeseries?crop=${encodeURIComponent(cropVal)}&region=${encodeURIComponent(region1)}&metric=${encodeURIComponent(metric)}`)
+            .then(res => res.json())
+            .then(data1 => {
+                fetch(`/api/agriculture/timeseries?crop=${encodeURIComponent(cropVal)}&region=${encodeURIComponent(region2Val)}&metric=${encodeURIComponent(metric)}`)
+                    .then(res => res.json())
+                    .then(data2 => {
+                        // Plot time series (region1)
+                        Plotly.newPlot(agricultureVisualization, [{
+                            x: data1.dates,
+                            y: data1.values,
+                            name: region1,
+                            type: 'scatter',
+                            mode: 'lines+markers'
+                        }, {
+                            x: data2.dates,
+                            y: data2.values,
+                            name: region2Val,
+                            type: 'scatter',
+                            mode: 'lines+markers'
+                        }], {
+                            title: `${metric} for ${region1} and ${region2Val}`,
+                            xaxis: { title: 'Date' },
+                            yaxis: { title: metric }
+                        });
+                        // Correlation scatter plot
+                        fetch(`/api/agriculture/correlation?mode=regions&crop=${encodeURIComponent(cropVal)}&region1=${encodeURIComponent(region1)}&region2=${encodeURIComponent(region2Val)}&metric=${encodeURIComponent(metric)}`)
+                            .then(res => res.json())
+                            .then(corrData => {
+                                Plotly.newPlot(agriCorrelationPlot, [{
+                                    x: corrData.x,
+                                    y: corrData.y,
+                                    mode: 'markers',
+                                    type: 'scatter',
+                                    name: `${region1} vs ${region2Val}`
+                                }], {
+                                    title: `Correlation: ${metric} (${region1} vs ${region2Val})`,
+                                    xaxis: { title: `${region1} ${metric}` },
+                                    yaxis: { title: `${region2Val} ${metric}` }
+                                });
+                                agriCorrelationValue.textContent = `Pearson r: ${corrData.pearson.toFixed(3)}`;
+                            });
+                    });
+            });
+    } else {
+        // Correlate two weather metrics for the same region
+        const cropVal = cropMetrics.value;
+        const regionVal = regionMetrics.value;
+        const metric1 = document.getElementById('weatherMetric1').value;
+        const metric2 = document.getElementById('weatherMetric2').value;
+        if (!cropVal || !regionVal || !metric1 || !metric2) {
+            alert('Please select crop, region, and both weather metrics.');
+            return;
+        }
+        // Fetch time series for both metrics
+        fetch(`/api/agriculture/timeseries?crop=${encodeURIComponent(cropVal)}&region=${encodeURIComponent(regionVal)}&metric=${encodeURIComponent(metric1)}`)
+            .then(res => res.json())
+            .then(data1 => {
+                fetch(`/api/agriculture/timeseries?crop=${encodeURIComponent(cropVal)}&region=${encodeURIComponent(regionVal)}&metric=${encodeURIComponent(metric2)}`)
+                    .then(res => res.json())
+                    .then(data2 => {
+                        // Plot time series (metric1)
+                        Plotly.newPlot(agricultureVisualization, [{
+                            x: data1.dates,
+                            y: data1.values,
+                            name: metric1,
+                            type: 'scatter',
+                            mode: 'lines+markers'
+                        }, {
+                            x: data2.dates,
+                            y: data2.values,
+                            name: metric2,
+                            type: 'scatter',
+                            mode: 'lines+markers'
+                        }], {
+                            title: `${metric1} and ${metric2} for ${regionVal}`,
+                            xaxis: { title: 'Date' },
+                            yaxis: { title: 'Value' }
+                        });
+                        // Correlation scatter plot
+                        fetch(`/api/agriculture/correlation?mode=metrics&crop=${encodeURIComponent(cropVal)}&region=${encodeURIComponent(regionVal)}&metric1=${encodeURIComponent(metric1)}&metric2=${encodeURIComponent(metric2)}`)
+                            .then(res => res.json())
+                            .then(corrData => {
+                                Plotly.newPlot(agriCorrelationPlot, [{
+                                    x: corrData.x,
+                                    y: corrData.y,
+                                    mode: 'markers',
+                                    type: 'scatter',
+                                    name: `${metric1} vs ${metric2}`
+                                }], {
+                                    title: `Correlation: ${metric1} vs ${metric2} (${regionVal})`,
+                                    xaxis: { title: metric1 },
+                                    yaxis: { title: metric2 }
+                                });
+                                agriCorrelationValue.textContent = `Pearson r: ${corrData.pearson.toFixed(3)}`;
+                            });
+                    });
+            });
+    }
+});
+
+// --- End Agriculture Correlation Logic ---

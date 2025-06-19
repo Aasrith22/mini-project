@@ -262,7 +262,6 @@ def get_tech_data():
                 'category': category,
                 'stock_price': float(values['4. close']),
                 'trading_volume': float(values['5. volume']),
-                'market_cap': None,  # Not available from Alpha Vantage free API
                 'volatility': float(values['2. high']) - float(values['3. low'])
             }
             data.append(data_point)
@@ -350,6 +349,137 @@ def get_agriculture_data():
     except Exception as e:
         logger.error(f"Error in agriculture data: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/agriculture/timeseries')
+def get_agriculture_timeseries():
+    try:
+        crop = request.args.get('crop')
+        region = request.args.get('region')
+        metric = request.args.get('metric', 'temperature')
+        if not crop or not region or not metric:
+            return jsonify({'error': 'Missing crop, region, or metric'}), 400
+        if crop not in AGRICULTURAL_REGIONS or region not in AGRICULTURAL_REGIONS[crop]:
+            return jsonify({'error': 'Invalid crop or region'}), 400
+        # Simulate data as in get_agriculture_data
+        city = region.split()[0]
+        current_url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={OPENWEATHER_API_KEY}&units=metric"
+        response = requests.get(current_url)
+        current_data = response.json()
+        if 'coord' not in current_data:
+            return jsonify({'error': 'Weather data not available'}), 500
+        lat = current_data['coord']['lat']
+        lon = current_data['coord']['lon']
+        data = []
+        for i in range(30):
+            date = datetime.now() - timedelta(days=i)
+            timestamp = int(date.timestamp())
+            historical_url = f"http://api.openweathermap.org/data/2.5/onecall/timemachine?lat={lat}&lon={lon}&dt={timestamp}&appid={OPENWEATHER_API_KEY}&units=metric"
+            response = requests.get(historical_url)
+            historical_data = response.json()
+            if 'current' in historical_data:
+                temperature = historical_data['current']['temp']
+                humidity = historical_data['current'].get('humidity', 50)
+                data_point = {
+                    'date': date.strftime('%Y-%m-%d'),
+                    'temperature': temperature,
+                    'humidity': humidity,
+                    'rainfall': historical_data['current'].get('rain', {}).get('1h', 0),
+                    'sunshine': historical_data['current'].get('sunshine', 8),
+                }
+                data.append(data_point)
+        data = sorted(data, key=lambda x: x['date'])
+        return jsonify({
+            'dates': [d['date'] for d in data],
+            'values': [d.get(metric, None) for d in data]
+        })
+    except Exception as e:
+        logger.error(f"Error in agriculture timeseries: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/agriculture/correlation')
+def get_agriculture_correlation():
+    try:
+        mode = request.args.get('mode')
+        crop = request.args.get('crop')
+        if mode == 'regions':
+            region1 = request.args.get('region1')
+            region2 = request.args.get('region2')
+            metric = request.args.get('metric', 'temperature')
+            if not crop or not region1 or not region2 or not metric:
+                return jsonify({'error': 'Missing crop, regions, or metric'}), 400
+            # Get timeseries for both regions
+            def get_series(region):
+                city = region.split()[0]
+                current_url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={OPENWEATHER_API_KEY}&units=metric"
+                response = requests.get(current_url)
+                current_data = response.json()
+                if 'coord' not in current_data:
+                    return []
+                lat = current_data['coord']['lat']
+                lon = current_data['coord']['lon']
+                data = []
+                for i in range(30):
+                    date = datetime.now() - timedelta(days=i)
+                    timestamp = int(date.timestamp())
+                    historical_url = f"http://api.openweathermap.org/data/2.5/onecall/timemachine?lat={lat}&lon={lon}&dt={timestamp}&appid={OPENWEATHER_API_KEY}&units=metric"
+                    response = requests.get(historical_url)
+                    historical_data = response.json()
+                    if 'current' in historical_data:
+                        data_point = {
+                            'date': date.strftime('%Y-%m-%d'),
+                            metric: historical_data['current'].get(metric, None)
+                        }
+                        data.append(data_point)
+                return sorted(data, key=lambda x: x['date'])
+            data1 = get_series(region1)
+            data2 = get_series(region2)
+            # Merge on date
+            df1 = pd.DataFrame(data1)
+            df2 = pd.DataFrame(data2)
+            merged = pd.merge(df1, df2, on='date', suffixes=('_1', '_2'))
+            x = merged[f'{metric}_1'].tolist()
+            y = merged[f'{metric}_2'].tolist()
+            pearson = float(pd.Series(x).corr(pd.Series(y))) if x and y and len(x) == len(y) and len(x) > 1 else 0.0
+            return jsonify({'x': x, 'y': y, 'pearson': pearson})
+        elif mode == 'metrics':
+            region = request.args.get('region')
+            metric1 = request.args.get('metric1')
+            metric2 = request.args.get('metric2')
+            if not crop or not region or not metric1 or not metric2:
+                return jsonify({'error': 'Missing crop, region, or metrics'}), 400
+            # Get timeseries for both metrics
+            city = region.split()[0]
+            current_url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={OPENWEATHER_API_KEY}&units=metric"
+            response = requests.get(current_url)
+            current_data = response.json()
+            if 'coord' not in current_data:
+                return jsonify({'error': 'Weather data not available'}), 500
+            lat = current_data['coord']['lat']
+            lon = current_data['coord']['lon']
+            data = []
+            for i in range(30):
+                date = datetime.now() - timedelta(days=i)
+                timestamp = int(date.timestamp())
+                historical_url = f"http://api.openweathermap.org/data/2.5/onecall/timemachine?lat={lat}&lon={lon}&dt={timestamp}&appid={OPENWEATHER_API_KEY}&units=metric"
+                response = requests.get(historical_url)
+                historical_data = response.json()
+                if 'current' in historical_data:
+                    data_point = {
+                        'date': date.strftime('%Y-%m-%d'),
+                        metric1: historical_data['current'].get(metric1, None),
+                        metric2: historical_data['current'].get(metric2, None)
+                    }
+                    data.append(data_point)
+            data = sorted(data, key=lambda x: x['date'])
+            x = [d.get(metric1, None) for d in data]
+            y = [d.get(metric2, None) for d in data]
+            pearson = float(pd.Series(x).corr(pd.Series(y))) if x and y and len(x) == len(y) and len(x) > 1 else 0.0
+            return jsonify({'x': x, 'y': y, 'pearson': pearson})
+        else:
+            return jsonify({'error': 'Invalid mode'}), 400
+    except Exception as e:
+        logger.error(f"Error in agriculture correlation: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/data/correlation', methods=['POST'])
 def analyze_correlation():

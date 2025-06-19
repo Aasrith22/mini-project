@@ -15,12 +15,12 @@
     box-sizing: border-box;
 }
 
-/* Modern Theme */
+/* Light Spotify-inspired theme */
 body {
-    font-family: 'Inter', sans-serif;
-    background-color: var(--background-color);
-    color: var(--text-color);
-    line-height: 1.6;
+    background: #f8f9fa;
+    color: #191414;
+    font-family: 'Montserrat', 'Inter', Arial, sans-serif;
+    min-height: 100vh;
     padding-top: 70px; /* Account for fixed navbar */
 }
 
@@ -114,11 +114,16 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .nav-tabs .nav-link {
+    color: #444;
+    background: transparent;
     border: none;
-    color: var(--secondary-color);
     padding: 1rem 1.5rem;
-    font-weight: 500;
-    transition: all var(--transition-speed);
+    font-weight: 600;
+    font-size: 1.1rem;
+    transition: color 0.3s, background 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .nav-tabs .nav-link i {
@@ -126,35 +131,40 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .nav-tabs .nav-link:hover {
-    border: none;
-    color: var(--primary-color);
+    color: #1DB954;
+    background: #f1fdf6;
 }
 
 .nav-tabs .nav-link.active {
-    border: none;
-    border-bottom: 2px solid var(--primary-color);
-    color: var(--primary-color);
+    color: #1DB954;
+    background: #e9fbe5;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 4px 16px rgba(30,185,84,0.08);
 }
 
 /* Cards */
 .card {
+    background: #fff;
     border: none;
-    border-radius: 12px;
-    box-shadow: var(--card-shadow);
-    transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+    border-radius: 18px;
+    box-shadow: 0 4px 24px rgba(30,185,84,0.07);
     margin-bottom: 1.5rem;
+    transition: transform 0.3s, box-shadow 0.3s;
+    animation: fadeInUp 0.7s;
 }
 
 .card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-6px) scale(1.03);
+    box-shadow: 0 8px 32px rgba(30,185,84,0.13);
 }
 
 .card-header {
-    background-color: white;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-    padding: 1.25rem;
-    border-radius: 12px 12px 0 0 !important;
+    background: #fff;
+    border-bottom: 1px solid #e9ecef;
+    border-radius: 18px 18px 0 0 !important;
+    color: #1DB954;
+    font-weight: 700;
+    font-size: 1.2rem;
 }
 
 .card-header h5 {
@@ -175,30 +185,38 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .form-select, .form-control {
-    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: #fff;
+    color: #191414;
+    border: 1px solid #e9ecef;
     border-radius: 8px;
     padding: 0.75rem;
-    transition: all var(--transition-speed);
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    transition: border 0.3s, box-shadow 0.3s;
 }
 
 .form-select:focus, .form-control:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
+    border-color: #1DB954;
+    box-shadow: 0 0 0 0.2rem rgba(30,185,84,0.10);
 }
 
 /* Buttons */
 .btn-primary {
-    background-color: var(--primary-color);
+    background: #1DB954;
+    color: #fff;
     border: none;
-    padding: 0.75rem 1.5rem;
-    font-weight: 500;
+    font-weight: 700;
     border-radius: 8px;
-    transition: all var(--transition-speed);
+    padding: 0.75rem 1.5rem;
+    font-size: 1.1rem;
+    transition: background 0.3s, color 0.3s, box-shadow 0.3s;
+    box-shadow: 0 2px 8px rgba(30,185,84,0.10);
 }
 
-.btn-primary:hover {
-    background-color: #357abd;
-    transform: translateY(-2px);
+.btn-primary:hover, .btn-primary:focus {
+    background: #1ed760;
+    color: #191414;
+    box-shadow: 0 4px 16px rgba(30,185,84,0.18);
 }
 
 .btn-primary:disabled {
@@ -210,6 +228,9 @@ h1, h2, h3, h4, h5, h6 {
     border-radius: 8px;
     border: none;
     padding: 1rem;
+    background: #e9ecef;
+    color: #191414;
+    font-weight: 500;
 }
 
 .alert-info {
@@ -219,7 +240,10 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Visualization Card */
 .visualization-card {
-    height: calc(100% - 1.5rem);
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 4px 24px rgba(30,185,84,0.07);
+    animation: fadeInUp 0.7s;
 }
 
 /* Footer */
@@ -410,6 +434,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Container styles */
 .container {
+    background: transparent;
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
@@ -417,8 +442,9 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Nav styles */
 nav {
-    display: flex;
-    gap: 10px;
+    background: #ffffff;
+    border-bottom: 2px solid #e9ecef;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
 /* Data section styles */
@@ -428,20 +454,6 @@ nav {
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     margin-bottom: 20px;
-}
-
-/* Nav tabs */
-.nav-tabs .nav-link {
-    color: #333;
-    background-color: transparent;
-    border: none;
-    padding: 0.75rem 1rem;
-    transition: color 0.3s ease;
-}
-
-.nav-tabs .nav-link.active {
-    color: #4a90e2;
-    border-bottom: 2px solid #4a90e2;
 }
 
 /* Loading states */
@@ -508,4 +520,57 @@ nav {
 
 .correlation-item.weak {
     border-left: 4px solid #e74c3c;
+}
+
+/* 3D Icon styles */
+.icon-3d {
+    width: 2.2rem;
+    height: 2.2rem;
+    vertical-align: middle;
+    filter: drop-shadow(0 2px 8px #1DB95455);
+    transition: transform 0.3s, filter 0.3s;
+    will-change: transform;
+    animation: iconPopIn 0.7s;
+}
+
+.nav-link:hover .icon-3d, .nav-link.active .icon-3d {
+    transform: scale(1.18) rotate(-8deg);
+    filter: drop-shadow(0 4px 16px #1DB95499) brightness(1.2);
+    animation: iconBounce 0.7s;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(40px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes iconPopIn {
+    0% { opacity: 0; transform: scale(0.7); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes iconBounce {
+    0% { transform: scale(1.18) rotate(-8deg); }
+    30% { transform: scale(1.3) rotate(-8deg); }
+    60% { transform: scale(1.1) rotate(-8deg); }
+    100% { transform: scale(1.18) rotate(-8deg); }
+}
+
+#techVisualization, #agricultureVisualization {
+    background: #f8f9fa;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(30,185,84,0.04);
+    padding: 1rem;
+    min-height: 400px;
+    animation: fadeInUp 0.7s;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    background: #e9ecef;
+}
+::-webkit-scrollbar-thumb {
+    background: #1DB954;
+    border-radius: 8px;
 }

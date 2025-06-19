@@ -92,22 +92,60 @@
                                         <option value="software">Software</option>
                                     </select>
                                 </div>
-                                <!-- Tech Company Selection -->
+                                <!-- Correlation Mode Selector -->
                                 <div class="mb-3">
-                                    <label for="techCompany" class="form-label">Company</label>
-                                    <select class="form-select" id="techCompany" disabled>
-                                        <option value="">Select Company</option>
+                                    <label for="correlationMode" class="form-label">Correlation Mode</label>
+                                    <select class="form-select" id="correlationMode">
+                                        <option value="companies">Companies</option>
+                                        <option value="metrics">Metrics (Same Company)</option>
                                     </select>
                                 </div>
-                                <!-- Financial Metric Selection -->
-                                <div class="mb-3">
-                                    <label for="financialMetric" class="form-label">Financial Metric</label>
-                                    <select class="form-select" id="financialMetric">
-                                        <option value="stock_price">Stock Price</option>
-                                        <option value="market_cap">Market Cap</option>
-                                        <option value="trading_volume">Trading Volume</option>
-                                        <option value="volatility">Volatility</option>
-                                    </select>
+                                <!-- Company/Metric Selectors (wrapped for JS show/hide) -->
+                                <div id="correlateCompaniesGroup">
+                                    <div class="mb-3">
+                                        <label for="techCompany" class="form-label">Company</label>
+                                        <select class="form-select" id="techCompany" disabled>
+                                            <option value="">Select Company</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="techCompany2" class="form-label">Compare With</label>
+                                        <select class="form-select" id="techCompany2" disabled>
+                                            <option value="">Select Company to Compare</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="financialMetric" class="form-label">Financial Metric</label>
+                                        <select class="form-select" id="financialMetric">
+                                            <option value="stock_price">Stock Price</option>
+                                            <option value="trading_volume">Trading Volume</option>
+                                            <option value="volatility">Volatility</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div id="correlateMetricsGroup" style="display:none;">
+                                    <div class="mb-3">
+                                        <label for="techCompanyMetrics" class="form-label">Company</label>
+                                        <select class="form-select" id="techCompanyMetrics" disabled>
+                                            <option value="">Select Company</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="financialMetric1" class="form-label">Metric 1</label>
+                                        <select class="form-select" id="financialMetric1">
+                                            <option value="stock_price">Stock Price</option>
+                                            <option value="trading_volume">Trading Volume</option>
+                                            <option value="volatility">Volatility</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="financialMetric2" class="form-label">Metric 2</label>
+                                        <select class="form-select" id="financialMetric2">
+                                            <option value="stock_price">Stock Price</option>
+                                            <option value="trading_volume">Trading Volume</option>
+                                            <option value="volatility">Volatility</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <button id="analyzeTech" class="btn btn-primary w-100" disabled>
                                     <i class="fas fa-chart-line"></i> Analyze Correlation
@@ -120,7 +158,23 @@
                     <div class="col-md-9">
                         <div class="card visualization-card">
                             <div class="card-body">
-                                <div id="techVisualization" style="width: 100%; height: 600px;">
+                                <!-- Mini slider/tabs -->
+                                <ul class="nav nav-pills mb-3" id="techVizTabs" role="tablist" style="justify-content: flex-start;">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="timeseries-tab" data-bs-toggle="pill" data-bs-target="#timeseries-pane" type="button" role="tab" aria-controls="timeseries-pane" aria-selected="true">Time Series</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="correlation-tab" data-bs-toggle="pill" data-bs-target="#correlation-pane" type="button" role="tab" aria-controls="correlation-pane" aria-selected="false">Correlation</button>
+                                    </li>
+                                </ul>
+                                <div class="tab-content" id="techVizTabContent">
+                                    <div class="tab-pane fade show active" id="timeseries-pane" role="tabpanel" aria-labelledby="timeseries-tab">
+                                        <div id="techVisualization" style="width: 100%; height: 600px;"></div>
+                                    </div>
+                                    <div class="tab-pane fade" id="correlation-pane" role="tabpanel" aria-labelledby="correlation-tab">
+                                        <div id="techCorrelationPlot" style="width: 100%; height: 600px;"></div>
+                                        <div id="techCorrelationValue" style="margin-top: 1rem; font-weight: 600;"></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -138,34 +192,84 @@
                                 <h5 class="mb-0"><i class="fas fa-sliders-h"></i> Analysis Controls</h5>
                             </div>
                             <div class="card-body">
+                                <!-- Correlation Mode Selector -->
                                 <div class="mb-3">
-                                    <label for="crop" class="form-label">Crop Type</label>
-                                    <select class="form-select" id="crop">
-                                        <option value="">Select Crop</option>
-                                        <option value="wheat">Wheat</option>
-                                        <option value="rice">Rice</option>
-                                        <option value="corn">Corn</option>
-                                        <option value="soybean">Soybean</option>
+                                    <label for="agriCorrelationMode" class="form-label">Correlation Mode</label>
+                                    <select class="form-select" id="agriCorrelationMode">
+                                        <option value="regions">Regions</option>
+                                        <option value="metrics">Metrics (Same Region)</option>
                                     </select>
                                 </div>
-                                <div class="mb-3">
-                                    <label for="region" class="form-label">Region</label>
-                                    <select class="form-select" id="region">
-                                        <option value="">Select Region</option>
-                                        <option value="north">North</option>
-                                        <option value="south">South</option>
-                                        <option value="east">East</option>
-                                        <option value="west">West</option>
-                                    </select>
+                                <!-- Regions Mode Controls -->
+                                <div id="correlateRegionsGroup">
+                                    <div class="mb-3">
+                                        <label for="crop" class="form-label">Crop Type</label>
+                                        <select class="form-select" id="crop">
+                                            <option value="">Select Crop</option>
+                                            <option value="wheat">Wheat</option>
+                                            <option value="rice">Rice</option>
+                                            <option value="corn">Corn</option>
+                                            <option value="soybean">Soybean</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="region" class="form-label">Region</label>
+                                        <select class="form-select" id="region">
+                                            <option value="">Select Region</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="region2" class="form-label">Compare With</label>
+                                        <select class="form-select" id="region2">
+                                            <option value="">Select Region to Compare</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="weatherMetric" class="form-label">Weather Metric</label>
+                                        <select class="form-select" id="weatherMetric">
+                                            <option value="temperature">Temperature</option>
+                                            <option value="rainfall">Rainfall</option>
+                                            <option value="humidity">Humidity</option>
+                                            <option value="sunshine">Sunshine Hours</option>
+                                        </select>
+                                    </div>
                                 </div>
-                                <div class="mb-3">
-                                    <label for="weatherMetric" class="form-label">Weather Metric</label>
-                                    <select class="form-select" id="weatherMetric">
-                                        <option value="temperature">Temperature</option>
-                                        <option value="rainfall">Rainfall</option>
-                                        <option value="humidity">Humidity</option>
-                                        <option value="sunshine">Sunshine Hours</option>
-                                    </select>
+                                <!-- Metrics Mode Controls -->
+                                <div id="correlateWeatherMetricsGroup" style="display:none;">
+                                    <div class="mb-3">
+                                        <label for="cropMetrics" class="form-label">Crop Type</label>
+                                        <select class="form-select" id="cropMetrics">
+                                            <option value="">Select Crop</option>
+                                            <option value="wheat">Wheat</option>
+                                            <option value="rice">Rice</option>
+                                            <option value="corn">Corn</option>
+                                            <option value="soybean">Soybean</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="regionMetrics" class="form-label">Region</label>
+                                        <select class="form-select" id="regionMetrics">
+                                            <option value="">Select Region</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="weatherMetric1" class="form-label">Weather Metric 1</label>
+                                        <select class="form-select" id="weatherMetric1">
+                                            <option value="temperature">Temperature</option>
+                                            <option value="rainfall">Rainfall</option>
+                                            <option value="humidity">Humidity</option>
+                                            <option value="sunshine">Sunshine Hours</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="weatherMetric2" class="form-label">Weather Metric 2</label>
+                                        <select class="form-select" id="weatherMetric2">
+                                            <option value="temperature">Temperature</option>
+                                            <option value="rainfall">Rainfall</option>
+                                            <option value="humidity">Humidity</option>
+                                            <option value="sunshine">Sunshine Hours</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <button id="analyzeAgriculture" class="btn btn-primary w-100">
                                     <i class="fas fa-chart-line"></i> Analyze Correlation
@@ -178,7 +282,23 @@
                     <div class="col-md-9">
                         <div class="card visualization-card">
                             <div class="card-body">
-                                <div id="agricultureVisualization" style="width: 100%; height: 600px;">
+                                <!-- Mini slider/tabs -->
+                                <ul class="nav nav-pills mb-3" id="agriVizTabs" role="tablist" style="justify-content: flex-start;">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="agri-timeseries-tab" data-bs-toggle="pill" data-bs-target="#agri-timeseries-pane" type="button" role="tab" aria-controls="agri-timeseries-pane" aria-selected="true">Time Series</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="agri-correlation-tab" data-bs-toggle="pill" data-bs-target="#agri-correlation-pane" type="button" role="tab" aria-controls="agri-correlation-pane" aria-selected="false">Correlation</button>
+                                    </li>
+                                </ul>
+                                <div class="tab-content" id="agriVizTabContent">
+                                    <div class="tab-pane fade show active" id="agri-timeseries-pane" role="tabpanel" aria-labelledby="agri-timeseries-tab">
+                                        <div id="agricultureVisualization" style="width: 100%; height: 600px;"></div>
+                                    </div>
+                                    <div class="tab-pane fade" id="agri-correlation-pane" role="tabpanel" aria-labelledby="agri-correlation-tab">
+                                        <div id="agriCorrelationPlot" style="width: 100%; height: 600px;"></div>
+                                        <div id="agriCorrelationValue" style="margin-top: 1rem; font-weight: 600;"></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
