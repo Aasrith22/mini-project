@@ -1,8 +1,6 @@
 // API configuration template
 // Copy this file to config.js and add your API keys
 window.config = {
-    // OpenWeather API configuration
-    OPENWEATHER_API_KEY: '3b0b813ec61c47616d9f4b564d3155a2',
     // Alpha Vantage API configuration
     ALPHA_VANTAGE_API_KEY: 'PS7N6Y7CK2TQ5NLJ',
     // Company symbols mapping for Alpha Vantage

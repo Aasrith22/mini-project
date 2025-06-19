@@ -62,3 +62,30 @@ data-viz-platform/
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Deployment on Netlify
+
+### 1. Deploy the Frontend (Static Site)
+- The `static/` folder contains all frontend files (HTML, JS, CSS).
+- You can deploy this folder directly to Netlify:
+  1. Drag and drop the `static/` folder in the Netlify dashboard, or connect your repo and set the publish directory to `static`.
+  2. No build command is needed (static site).
+
+### 2. Set Up API Proxy (_redirects)
+- The file `static/_redirects` is used to proxy API requests to your backend.
+- Edit the `_redirects` file and replace `https://YOUR-BACKEND-URL` with your actual backend deployment URL (e.g., Render, Heroku, Railway).
+
+```
+/api/*    https://YOUR-BACKEND-URL/api/:splat   200
+```
+
+### 3. Deploy the Backend
+- Deploy your Flask backend (e.g., `app.py`) to a service that supports Python (Render, Heroku, etc.).
+- Set your API keys as environment variables on the backend host.
+
+### 4. Update API URLs (if needed)
+- The frontend is set up to call `/api/...` endpoints, which will be proxied to your backend by Netlify.
+- If you change the backend API structure, update the proxy rule in `_redirects` accordingly.
+
+### 5. Test
+- After deploying both frontend and backend, visit your Netlify site and verify that all features work and API calls are successful.

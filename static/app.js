@@ -10,14 +10,6 @@ const companyData = {
     software: ['Microsoft', 'Oracle', 'SAP', 'Salesforce']
 };
 
-// Region data mapping
-const regionData = {
-    wheat: ['North Plains', 'Central Belt', 'Southern Region', 'Coastal Area'],
-    rice: ['Tropical Zone', 'Subtropical Belt', 'River Deltas', 'Monsoon Region'],
-    corn: ['Midwest', 'Great Plains', 'Southeast', 'Northeast'],
-    soybean: ['Upper Midwest', 'Lower Midwest', 'Delta Region', 'Eastern Belt']
-};
-
 // Weather metrics mapping
 const weatherMetrics = {
     temperature: '°C',
@@ -30,9 +22,6 @@ const weatherMetrics = {
 const API_ENDPOINTS = {
     tech: {
         stockData: 'https://www.alphavantage.co/query',
-    },
-    weather: {
-        data: 'https://api.openweathermap.org/data/2.5/weather'
     },
     regions: 'https://api.example.com/regions' // Add the API endpoint for regions
 };
@@ -206,27 +195,68 @@ async function updateCropDropdown() {
     }
 }
 
-// Function to populate region dropdown based on selected crop using backend
-async function updateRegionDropdown(cropType) {
+// Update region dropdowns for agriculture to use new major city options
+function updateRegionDropdown(cropValue) {
     const regionSelect = document.getElementById('region');
-    regionSelect.innerHTML = '<option value="">Select Region</option>';
-    regionSelect.disabled = true;
-    if (cropType) {
-        try {
-            const response = await fetch(`/api/agriculture/regions/${cropType}`);
-            if (!response.ok) throw new Error('Failed to fetch regions for ' + cropType);
-            const regions = await response.json(); // Array of region names
-            regions.forEach(region => {
-                const option = document.createElement('option');
-                option.value = region;
-                option.textContent = region;
-                regionSelect.appendChild(option);
+    if (!regionSelect) return;
+    fetch(`/api/agriculture/regions/${encodeURIComponent(cropValue)}`)
+        .then(res => res.json())
+        .then(data => {
+            regionSelect.innerHTML = '<option value="">Select Region</option>';
+            (Array.isArray(data) ? data : (data.regions || [])).forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r;
+                opt.textContent = r;
+                regionSelect.appendChild(opt);
             });
-            regionSelect.disabled = false;
-        } catch (err) {
-            console.error('Error fetching regions:', err);
-        }
-    }
+        });
+}
+
+function updateRegion2Dropdown(cropValue) {
+    const region2Select = document.getElementById('region2');
+    if (!region2Select) return;
+    fetch(`/api/agriculture/regions/${encodeURIComponent(cropValue)}`)
+        .then(res => res.json())
+        .then(data => {
+            region2Select.innerHTML = '<option value="">Select Region to Compare</option>';
+            (Array.isArray(data) ? data : (data.regions || [])).forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r;
+                opt.textContent = r;
+                region2Select.appendChild(opt);
+            });
+        });
+}
+
+function updateRegionMetricsDropdown(cropValue) {
+    const regionMetricsSelect = document.getElementById('regionMetrics');
+    if (!regionMetricsSelect) return;
+    fetch(`/api/agriculture/regions/${encodeURIComponent(cropValue)}`)
+        .then(res => res.json())
+        .then(data => {
+            regionMetricsSelect.innerHTML = '<option value="">Select Region</option>';
+            (Array.isArray(data) ? data : (data.regions || [])).forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r;
+                opt.textContent = r;
+                regionMetricsSelect.appendChild(opt);
+            });
+        });
+}
+
+// On crop change, update all region dropdowns
+const cropSelect = document.getElementById('crop');
+if (cropSelect) {
+    cropSelect.addEventListener('change', function() {
+        updateRegionDropdown(this.value);
+        updateRegion2Dropdown(this.value);
+    });
+}
+const cropMetricsSelect = document.getElementById('cropMetrics');
+if (cropMetricsSelect) {
+    cropMetricsSelect.addEventListener('change', function() {
+        updateRegionMetricsDropdown(this.value);
+    });
 }
 
 // Function to process monthly weather data
@@ -326,44 +356,82 @@ async function updateTechVisualization() {
     }
 }
 
-// Function to update agriculture visualization with real weather data
+// Update available weather metrics to match Open-Meteo
+const availableWeatherMetrics = [
+    { value: 'temperature', label: 'Temperature (°C)' },
+    { value: 'rainfall', label: 'Rainfall (mm)' },
+    { value: 'humidity', label: 'Humidity (%)' }
+];
+
+function updateWeatherMetricDropdowns() {
+    const weatherMetric = document.getElementById('weatherMetric');
+    const weatherMetric1 = document.getElementById('weatherMetric1');
+    const weatherMetric2 = document.getElementById('weatherMetric2');
+    [weatherMetric, weatherMetric1, weatherMetric2].forEach(select => {
+        if (select) {
+            select.innerHTML = '';
+            availableWeatherMetrics.forEach(metric => {
+                const option = document.createElement('option');
+                option.value = metric.value;
+                option.textContent = metric.label;
+                select.appendChild(option);
+            });
+        }
+    });
+}
+
+// Call this on DOMContentLoaded
+updateWeatherMetricDropdowns();
+
+// Update visualization logic for agriculture
 async function updateAgricultureVisualization() {
     const region = document.getElementById('region').value;
     const metric = document.getElementById('weatherMetric').value;
-    const currentDate = new Date();
-    const month = currentDate.getMonth() + 1; // Months are 0-based
-    const year = currentDate.getFullYear();
-    
-    if (!region || !metric) return;
-    
+    const crop = document.getElementById('crop').value;
+    if (!region || !metric || !crop) return;
     try {
-        const coords = window.config.REGION_COORDINATES[region];
-        const weatherData = await fetchMonthlyWeatherData(coords.lat, coords.lon, month, year);
-        const processedData = processMonthlyWeatherData(weatherData);
-        
-        if (processedData) {
-            createVisualization(
-                processedData,
-                'agricultureVisualization',
-                `${region} Monthly Weather Data`,
-                metric,
-                weatherMetrics[metric]
-            );
-        } else {
-            document.getElementById('agricultureVisualization').innerHTML = 
-                '<div class="alert alert-warning">No data available for visualization</div>';
+        const resp = await fetch(`/api/agriculture/timeseries?crop=${encodeURIComponent(crop)}&region=${encodeURIComponent(region)}&metric=${encodeURIComponent(metric)}`);
+        const data = await resp.json();
+        if (data.error) {
+            document.getElementById('agricultureVisualization').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+            return;
+        }
+        // Plot weather metric and production if available
+        const traces = [];
+        traces.push({
+            x: data.dates,
+            y: data.values,
+            name: metric.charAt(0).toUpperCase() + metric.slice(1),
+            type: 'scatter',
+            mode: 'lines+markers',
+            yaxis: 'y1'
+        });
+        if (data.production && data.production.some(v => v !== null)) {
+            traces.push({
+                x: data.dates,
+                y: data.production,
+                name: 'Production',
+                type: 'scatter',
+                mode: 'lines+markers',
+                yaxis: 'y2'
+            });
+        }
+        const layout = {
+            title: `${metric} and production for ${region}`,
+            xaxis: { title: 'Year' },
+            yaxis: { title: metric.charAt(0).toUpperCase() + metric.slice(1), side: 'left' },
+            yaxis2: data.production && data.production.some(v => v !== null) ? {
+                title: 'Production',
+                overlaying: 'y',
+                side: 'right'
+            } : undefined
+        };
+        Plotly.newPlot('agricultureVisualization', traces, layout);
+        if (data.warning) {
+            document.getElementById('agricultureVisualization').innerHTML += `<div class="alert alert-warning">${data.warning}</div>`;
         }
     } catch (error) {
-        console.error('Error updating agriculture visualization:', error);
-        // Fallback to sample data
-        const sampleData = generateAgricultureData(crop, region, metric);
-        createVisualization(
-            sampleData,
-            'agricultureVisualization',
-            `${region} Data (Sample)`,
-            metric,
-            weatherMetrics[metric]
-        );
+        document.getElementById('agricultureVisualization').innerHTML = `<div class="alert alert-danger">Error loading data</div>`;
     }
 }
 
@@ -868,11 +936,11 @@ const regionMetrics = document.getElementById('regionMetrics');
 
 function populateRegions(cropValue, regionSelect) {
     // Fetch regions for the selected crop from backend
-    fetch(`/api/regions?crop=${encodeURIComponent(cropValue)}`)
+    fetch(`/api/agriculture/regions/${encodeURIComponent(cropValue)}`)
         .then(res => res.json())
         .then(data => {
             regionSelect.innerHTML = '<option value="">Select Region</option>';
-            data.regions.forEach(r => {
+            (Array.isArray(data) ? data : (data.regions || [])).forEach(r => {
                 const opt = document.createElement('option');
                 opt.value = r;
                 opt.textContent = r;
